@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from gitlab_publish import GitLabClient, parse_mr_url, project_path, read_token
+from gitlab_publish import GitLabClient, project_path, read_token, resolve_gitlab_project
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 MAX_ATTEMPTS = 3
@@ -26,9 +26,9 @@ BLOCKING_SEVERITIES = {"critical", "high", "medium"}
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--project-mr-url",
-        default=os.environ.get("AI_REVIEW_MR_URL", ""),
-        help="Any MR URL of the watched project. Defaults to AI_REVIEW_MR_URL.",
+        "--gitlab-project",
+        default=os.environ.get("AI_REVIEW_GITLAB_PROJECT", ""),
+        help="GitLab project path (group/repo) or numeric id. Defaults to AI_REVIEW_GITLAB_PROJECT.",
     )
     parser.add_argument("--label", default=os.environ.get("AI_REVIEW_WATCH_LABEL", "promotion"))
     parser.add_argument("--state", default=os.environ.get("AI_REVIEW_WATCH_STATE", "outputs/watch-state.json"))
@@ -221,8 +221,8 @@ def write_job_summary(mr: dict[str, Any]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    if not args.project_mr_url.strip():
-        raise ValueError("Set AI_REVIEW_MR_URL (any MR of the watched project) or pass --project-mr-url.")
+    if not args.gitlab_project.strip():
+        raise ValueError("Set AI_REVIEW_GITLAB_PROJECT (group/repo or project id) or pass --gitlab-project.")
     token = read_token(args.token_env)
     if not token:
         raise RuntimeError(f"No GitLab token found in {args.token_env}")
@@ -236,10 +236,10 @@ def main(argv: list[str] | None = None) -> int:
         log("another watch run is still active; skipping this tick")
         return 0
 
-    ref = parse_mr_url(args.project_mr_url.strip())
-    client = GitLabClient(ref.gitlab_url, token)
+    target = resolve_gitlab_project(explicit_project=args.gitlab_project.strip())
+    client = GitLabClient(target.gitlab_url, token)
     query = urllib.parse.urlencode({"state": "opened", "labels": args.label})
-    mrs = client.request_paginated(f"/projects/{project_path(ref.project)}/merge_requests?{query}")
+    mrs = client.request_paginated(f"/projects/{project_path(target.project)}/merge_requests?{query}")
     state_path = PACKAGE_ROOT / args.state
     state = load_state(state_path)
 

@@ -12,6 +12,9 @@ concurrency:
 
 jobs:
   review:
+    # Secrets/variables are read from this GitHub Environment (not repo-level Actions).
+    # Name must match Settings → Environments → your environment name.
+    environment: PROD_ENV
     runs-on: ubuntu-latest
     timeout-minutes: 330
     outputs:
@@ -21,7 +24,8 @@ jobs:
       GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       AI_REVIEW_SLACK_WEBHOOK_URL: ${{ secrets.AI_REVIEW_SLACK_WEBHOOK_URL }}
-      AI_REVIEW_MR_URL: ${{ vars.AI_REVIEW_MR_URL }}
+      GITLAB_BASE_URL: ${{ vars.GITLAB_BASE_URL || 'https://gitlab.com' }}
+      AI_REVIEW_GITLAB_PROJECT: ${{ vars.AI_REVIEW_GITLAB_PROJECT }}
       AI_REVIEW_WATCH_LABEL: ${{ vars.AI_REVIEW_WATCH_LABEL || 'promotion' }}
       AI_REVIEW_COMMAND: claude -p --output-format text --max-turns 3 --model opus
       AI_REVIEW_POLICY: policies/blockchain-defi.md

@@ -28,6 +28,30 @@ class MergeRequestRef:
     iid: int
 
 
+@dataclass
+class GitLabProjectRef:
+    gitlab_url: str
+    project: str
+
+
+def gitlab_base_url() -> str:
+    return (os.environ.get("GITLAB_BASE_URL") or "https://gitlab.com").rstrip("/")
+
+
+def resolve_gitlab_project(*, explicit_project: str = "", mr_url: str = "") -> GitLabProjectRef:
+    """Which GitLab project to call API against (label watch, etc.). Prefer AI_REVIEW_GITLAB_PROJECT."""
+    project = explicit_project.strip()
+    if project:
+        return GitLabProjectRef(gitlab_url=gitlab_base_url(), project=project)
+    if mr_url.strip():
+        ref = parse_mr_url(mr_url.strip())
+        return GitLabProjectRef(gitlab_url=ref.gitlab_url, project=ref.project)
+    raise ValueError(
+        "Set AI_REVIEW_GITLAB_PROJECT (group/repo or numeric project id). "
+        "AI_REVIEW_MR_URL is only for reviewing one MR locally, not for label watch."
+    )
+
+
 class GitLabClient:
     def __init__(self, gitlab_url: str, token: str) -> None:
         self.gitlab_url = gitlab_url.rstrip("/")

@@ -2,10 +2,10 @@
 
 GitLab MR diff → AI 리뷰 → (선택) GitLab 코멘트 게시.
 
-| 방식 | `AI_REVIEW_MR_URL` 의미 | 실행 |
+| 방식 | 설정 | 실행 |
 | --- | --- | --- |
-| **로컬** | 리뷰할 **MR 하나** | 아래 [로컬 실행](#로컬-실행) |
-| **GitHub Actions** | 감시할 **프로젝트** MR URL (아무 번호) | [promotion 자동 리뷰](#github-actions-promotion-mr) |
+| **로컬** | `AI_REVIEW_MR_URL` — 리뷰할 MR 하나 | [로컬 실행](#로컬-실행) |
+| **GitHub Actions** | `AI_REVIEW_GITLAB_PROJECT` — GitLab `group/repo` (또는 project id) | [promotion 자동 리뷰](#github-actions-promotion-mr) |
 
 상세: [REVIEW_PIPELINE.md](REVIEW_PIPELINE.md)
 
@@ -72,11 +72,20 @@ bash scripts/publish-gitlab.sh
 
 워크플로: **Watch promotion MRs** — 6시간마다, `promotion` 라벨 **열린 MR** 검색 → 아직 안 돌렸거나 **head SHA 변경** 시 리뷰 → **`outputs/mr-<iid>/`** 저장 (GitLab 자동 게시 없음).
 
-| | |
-| --- | --- |
-| Secrets | `GITLAB_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN` |
-| Variables | `AI_REVIEW_MR_URL` (프로젝트 기준 MR URL) |
-| 선택 | `AI_REVIEW_WATCH_LABEL` (기본 `promotion`) |
+### GitHub 설정 (한 번만)
+
+1. Repo **Settings → Environments** → 예: **`PROD_ENV`** (워크플로 `environment:` 이름과 동일해야 함).
+2. 그 **Environment** 안에 등록 (Repository Actions 탭이 **아님**):
+
+| 종류 | 이름 | 값 |
+| --- | --- | --- |
+| Secret | `GITLAB_TOKEN` | GitLab PAT (`api`) |
+| Secret | `CLAUDE_CODE_OAUTH_TOKEN` | Claude Code |
+| Variable | `AI_REVIEW_GITLAB_PROJECT` | `group/repo` (예: `hwis-tft-group/.../flash-lending`) |
+
+선택 Variable: `GITLAB_BASE_URL`, `AI_REVIEW_WATCH_LABEL` (기본 `promotion`)
+
+3. 이 변경을 **push**한 뒤 Actions → **Watch promotion MRs** → **Run workflow**로 확인.
 
 결과: `outputs/mr-<iid>/review.md`, `outputs/watch-state.json`, Artifact / Job summary.
 

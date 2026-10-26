@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +28,7 @@ from gitlab_publish import (  # noqa: E402
     is_our_inline_discussion,
     parse_mr_url,
     plan_inline_actions,
+    resolve_gitlab_project,
     select_summary_targets,
 )
 
@@ -255,6 +258,12 @@ Suggested fix: Clean up.
         self.assertEqual(internal.gitlab_url, "http://gitlab.internal.local")
         self.assertEqual(internal.project, "group/project")
         self.assertEqual(internal.iid, 7)
+
+    def test_resolve_gitlab_project_prefers_explicit_project(self) -> None:
+        with mock.patch.dict(os.environ, {"GITLAB_BASE_URL": "https://gitlab.example.com"}, clear=False):
+            ref = resolve_gitlab_project(explicit_project="group/repo")
+        self.assertEqual(ref.gitlab_url, "https://gitlab.example.com")
+        self.assertEqual(ref.project, "group/repo")
 
     def test_gitlab_summary_body_adds_marker_once(self) -> None:
         body = format_summary_body("AI REVIEW - AUTOMATED REVIEW", "# AI Review\n\nReady")
