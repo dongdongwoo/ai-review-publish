@@ -1,0 +1,89 @@
+name: Watch promotion MRs
+
+on:
+  schedule:
+    # 00:00, 06:00, 12:00, 18:00 Asia/Seoul
+    - cron: "0 15,21,3,9 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: watch-promotion
+  cancel-in-progress: false
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    outputs:
+      reviewed_count: ${{ steps.last_run.outputs.reviewed_count }}
+      reviewed_iids: ${{ steps.last_run.outputs.reviewed_iids }}
+    env:
+      GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      AI_REVIEW_SLACK_WEBHOOK_URL: ${{ secrets.AI_REVIEW_SLACK_WEBHOOK_URL }}
+      AI_REVIEW_MR_URL: ${{ vars.AI_REVIEW_MR_URL }}
+      AI_REVIEW_WATCH_LABEL: ${{ vars.AI_REVIEW_WATCH_LABEL || 'promotion' }}
+      AI_REVIEW_COMMAND: claude -p --output-format text --max-turns 3 --model opus
+      AI_REVIEW_POLICY: policies/blockchain-defi.md
+      AI_REVIEW_MR_CONTEXT: policies/mr-context.md
+      AI_REVIEW_MAX_DIFF_LINES: "15000"
+      AI_REVIEW_PER_FILE_DIFF_LINES: "11000"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Restore review state
+        uses: actions/cache/restore@v4
+        with:
+          path: outputs
+          key: watch-promotion-${{ hashFiles('outputs/watch-state.json') }}
+          restore-keys: watch-promotion-
+
+      - name: Review new labeled MRs
+        run: sh scripts/watch-promotion.sh
+
+      - name: Job outputs
+        id: last_run
+        if: always()
+        run: |
+          if [ -f outputs/watch-last-run.json ]; then
+            count=$(python3 -c "import json; print(len(json.load(open('outputs/watch-last-run.json'))['reviewed']))")
+            iids=$(python3 -c "import json; print(','.join(str(x['iid']) for x in json.load(open('outputs/watch-last-run.json'))['reviewed'])")
+          else
+            count=0
+            iids=
+          fi
+          echo "reviewed_count=$count" >> "$GITHUB_OUTPUT"
+          echo "reviewed_iids=$iids" >> "$GITHUB_OUTPUT"
+
+      - name: Save review state
+        if: always()
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: outputs
+          key: watch-promotion-${{ hashFiles('outputs/watch-state.json') }}
+
+      - name: Upload reviews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reviews-${{ github.run_id }}
+          path: |
+            outputs/mr-*/review.md
+            outputs/mr-*/inline-candidates.json
+            outputs/mr-*/run.log
+            outputs/watch-state.json
+            outputs/watch-last-run.json
+          if-no-files-found: ignore
+          retention-days: 30

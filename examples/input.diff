@@ -1,0 +1,16 @@
+diff --git a/src/payment-limit.ts b/src/payment-limit.ts
+index 1111111..2222222 100644
+--- a/src/payment-limit.ts
++++ b/src/payment-limit.ts
+@@ -1,8 +1,11 @@
+ export function canWithdraw(balance: number, requested: number): boolean {
+-  if (requested > balance) {
++  if (requested >= balance) {
+     return false;
+   }
+
++  // TODO: add currency-specific precision handling
++  console.log("withdrawal check", { balance, requested });
++
+   return true;
+ }

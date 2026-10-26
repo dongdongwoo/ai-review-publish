@@ -1,0 +1,40 @@
+{
+  "unmatched": "remainder",
+  "exclude": [
+    "pnpm-lock.yaml",
+    "package-lock.json",
+    "yarn.lock",
+    "cargo.lock",
+    "**/mockServiceWorker.js"
+  ],
+  "blocking_paths": [
+    "packages/domain/",
+    "apps/api/src/modules/risk/",
+    "apps/api/src/modules/liquidation/",
+    "apps/api/src/modules/oracle/",
+    "apps/api/src/modules/pricing/",
+    "apps/api/src/modules/collateral/",
+    "contracts/"
+  ],
+  "slices": [
+    {
+      "name": "frontend",
+      "include": ["apps/web*/", "apps/frontend/", "apps/storybook/", "packages/ui/", "**/*.tsx"],
+      "action": "drop"
+    },
+    {
+      "name": "contracts",
+      "include": ["contracts/", "**/*.sol"],
+      "policy": "policies/blockchain-defi.md"
+    },
+    {
+      "name": "backend",
+      "include": ["apps/api/", "packages/domain/", "packages/api-client/", "src/"]
+    },
+    {
+      "name": "docs",
+      "include": ["docs/"],
+      "action": "drop"
+    }
+  ]
+}

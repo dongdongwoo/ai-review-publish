@@ -1,0 +1,51 @@
+name: Publish MR review
+
+on:
+  workflow_dispatch:
+    inputs:
+      mr_iid:
+        description: GitLab MR number reviewed by "Watch promotion MRs" (for example 205)
+        required: true
+      apply:
+        description: Post to GitLab (false writes the publication plan only)
+        type: boolean
+        default: true
+
+concurrency:
+  group: watch-promotion
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+      AI_REVIEW_GITLAB_APPLY: ${{ inputs.apply && '1' || '0' }}
+      AI_REVIEW_GITLAB_PUBLISH_INLINE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Restore review state
+        uses: actions/cache/restore@v4
+        with:
+          path: outputs
+          key: watch-outputs-${{ github.run_id }}
+          restore-keys: watch-outputs-
+
+      - name: Publish
+        env:
+          MR_IID: ${{ inputs.mr_iid }}
+        run: |
+          case "$MR_IID" in ''|*[!0-9]*) echo "mr_iid must be a number" >&2; exit 2 ;; esac
+          sh scripts/publish-mr.sh "$MR_IID"
+          {
+            echo '```json'
+            head -c 4000 "outputs/mr-$MR_IID/gitlab-publication-plan.json"
+            echo
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY" || true
