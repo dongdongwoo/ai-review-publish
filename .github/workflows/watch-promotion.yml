@@ -62,7 +62,7 @@ jobs:
         run: |
           if [ -f outputs/watch-last-run.json ]; then
             count=$(python3 -c "import json; print(len(json.load(open('outputs/watch-last-run.json'))['reviewed']))")
-            iids=$(python3 -c "import json; print(','.join(str(x['iid']) for x in json.load(open('outputs/watch-last-run.json'))['reviewed'])")
+            iids=$(python3 -c "import json; print(','.join(str(x['iid']) for x in json.load(open('outputs/watch-last-run.json'))['reviewed']))")
           else
             count=0
             iids=
